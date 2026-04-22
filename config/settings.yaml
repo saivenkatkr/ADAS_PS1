@@ -1,0 +1,99 @@
+# ============================================================
+#  ADAS System — Central Configuration
+#  Edit this file to swap models, tune thresholds, change I/O
+# ============================================================
+
+system:
+  mode: all                    # all | front | demo
+  target_fps: 30
+  show_display: true
+  log_level: INFO
+
+cameras:
+  front:
+    source: 0                  # int=camera index, str=video file/RTSP
+    resolution: [1920, 1080]
+    fps: 30
+    enabled: true
+  left:
+    source: 1
+    resolution: [1280, 720]
+    fps: 30
+    enabled: true
+  right:
+    source: 2
+    resolution: [1280, 720]
+    fps: 30
+    enabled: true
+  rear:
+    source: 3
+    resolution: [1280, 720]
+    fps: 30
+    enabled: true
+
+# ----------------------------------------------------------
+# PERCEPTION — swap models by changing 'backend' key only
+# ----------------------------------------------------------
+perception:
+  detector:
+    backend: yolov8            # yolov8 | yolov9 | rtdetr | custom
+    model_path: models/yolov8n.pt
+    confidence: 0.45
+    iou_threshold: 0.45
+    classes: [0, 1, 2, 3, 5, 7]   # person, bicycle, car, moto, bus, truck
+    device: auto               # auto | cpu | cuda | mps
+
+  lane_detector:
+    backend: heuristic         # heuristic | clrnet | laneatt
+    model_path: null           # set path for DL lane models
+    roi_top_ratio: 0.55        # how far down frame the ROI starts
+
+  depth_estimator:
+    backend: midas             # midas | dpt | none
+    model_type: MiDaS_small    # MiDaS_small | DPT_Large | DPT_Hybrid
+    enabled: true
+
+# ----------------------------------------------------------
+# TRACKING
+# ----------------------------------------------------------
+tracking:
+  backend: deepsort            # deepsort | bytetrack | custom
+  max_age: 30                  # frames before track is deleted
+  min_hits: 3                  # frames before track is confirmed
+  iou_threshold: 0.3
+
+# ----------------------------------------------------------
+# DECISION — tune warning thresholds here
+# ----------------------------------------------------------
+decision:
+  collision:
+    ttc_warning_sec: 3.0       # time-to-collision warning threshold
+    ttc_critical_sec: 1.5      # critical (brake) threshold
+    min_object_area: 2000      # ignore tiny detections (px²)
+
+  blind_spot:
+    zone_x_ratio: 0.25         # fraction of frame width = blind zone
+    min_velocity_kmh: 10.0     # only warn when moving
+
+  parking:
+    critical_distance_cm: 40
+    warning_distance_cm: 100
+    grid_cells: [10, 6]        # cols, rows for overhead grid
+
+# ----------------------------------------------------------
+# OUTPUT
+# ----------------------------------------------------------
+output:
+  display:
+    font_scale: 0.6
+    overlay_alpha: 0.4
+
+  audio:
+    enabled: true
+    beep_cooldown_sec: 2.0
+
+  logger:
+    enabled: true
+    log_dir: logs/
+    record_video: false
+    video_dir: logs/video/
