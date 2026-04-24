@@ -1,16 +1,5 @@
 <div align="center">
 
-# 🚗 ADAS — Advanced Driver Assistance System
-
-### Real-time multi-camera driver assistance using Python, OpenCV & YOLOv8
-
-[![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.8+-green?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org)
-[![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-blueviolet?style=for-the-badge)](https://ultralytics.com)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Mac-0078d4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](https://github.com)
-
-</div>
 
 ---
 
