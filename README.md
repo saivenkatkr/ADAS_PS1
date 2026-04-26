@@ -1,54 +1,202 @@
 <div align="center">
 
+# 🚗 ADAS — Advanced Driver Assistance System
+
+## 🆕 Version: adas_ps1.1
+
+### 🚧 Project Status
+- ✅ `main.py` → Fully functional ADAS pipeline (core system)
+- ⚠️ `web_app.py` → Work in progress (prototype for browser interface)
+
+> ⚠️ Note:
+> The primary implementation is in `main.py`.
+> `web_app.py` is currently under development and only demonstrates future web-based integration.
+
+### Real-time multi-camera driver assistance using Python, OpenCV & YOLOv8
+
+[![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.8+-green?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-blueviolet?style=for-the-badge)](https://ultralytics.com)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Mac-0078d4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](https://github.com)
+
+</div>
 
 ---
 
 ## 📌 What is this?
 
-This project is a **real-time Advanced Driver Assistance System (ADAS)** built entirely in Python using pretrained deep learning models — no model training required.
-
-It processes video from up to **4 cameras** (front, left, right, rear) mounted on a vehicle and provides:
-
-- 🎯 **Object Detection** — detects 80 classes (cars, people, dogs, cyclists, etc.)
-- 🛣️ **Lane Detection** — detects left and right lane lines with filled overlay
-- ↔️ **Lane Change Detection** — announces when driver is changing lanes
-- ⚠️ **Collision Warning** — estimates distance and time-to-collision for every object
-- 🔍 **Blind Spot Detection** — detects vehicles in left/right blind zones
-- 🅿️ **Parking Assistance** — rear camera obstacle proximity grid
-- 📏 **Depth Estimation** — monocular depth using MiDaS (optional, GPU recommended)
-- 🔢 **Multi-Object Tracking** — stable object IDs across frames using Kalman filter
+A **real-time Advanced Driver Assistance System** built in Python using pretrained deep learning models — no model training required. It processes live camera feeds or uploaded video files and provides safety-critical alerts.
 
 ---
 
-## 🖼️ System Architecture
+## 💡 Why this project?
+
+Most ADAS projects focus only on object detection.
+
+This system goes beyond that by combining:
+- Detection + Tracking + Decision-making
+- Real-time performance constraints
+- Modular, scalable architecture
+
+It simulates real-world ADAS pipelines used in autonomous systems.
+
+---
+
+## 🏗️ Two Ways to Run
+
+This project has **two entry points**. Use the right one for your situation:
+
+| | `main.py` | `web_app.py` |
+|---|---|---|
+| **What it is** | The real ADAS system | Web interface for testing |
+| **Input** | Live webcam or video file | Upload files in browser |
+| **Output** | OpenCV window on screen | Annotated video in browser |
+| **Camera needed?** | ✅ Yes (or video file) | ❌ No camera needed |
+| **When to use** | Vehicle deployment / live testing | Quick testing without a camera |
+| **Run command** | `python main.py` | `python web_app.py` |
+
+> ⚠️ **`web_app.py` is for testing only.**
+> It runs the same full ADAS pipeline as `main.py`, but through a browser upload interface. It is NOT meant for real vehicle use. For actual deployment on a vehicle, always use `main.py` with live cameras.
+
+---
+
+> ⚠️ `web_app.py` is under development and not finalized.
+> It is a prototype showing how the ADAS system can be integrated into a web interface.
+> For real-time usage and full functionality, use `main.py`.
+
+
+---
+
+
+## ✨ Features
+
+| Feature | `main.py` | `web_app.py` |
+|---|---|---|
+| YOLOv8 Detection (80 classes) | ✅ | ✅ |
+| Kalman Tracking (stable IDs) | ✅ | ✅ |
+| Lane Detection + polygon overlay | ✅ | ✅ |
+| Lane CHANGE detection (banner) | ✅ | ✅ |
+| Lane Departure Warning | ✅ | ✅ |
+| Collision Warning (TTC + distance) | ✅ | ✅ |
+| Blind Spot Detection | ✅ | ✅ |
+| Parking Assist (reverse mode) | ✅ | ✅ |
+| Depth Estimation (MiDaS) | ✅ optional | ❌ |
+| **Reverse Mode (E key)** | ✅ | ✅ toggle |
+| FPS counter + HUD | ✅ | — |
+| Video playback in browser | — | ✅ |
+| Download annotated video | — | ✅ |
+
+---
+
+## ⌨️ Keyboard Controls (`main.py` live mode)
+
+| Key | Action |
+|---|---|
+| `Q` / `ESC` | Quit |
+| `L` | Toggle lane detection overlay ON / OFF |
+| `D` | Toggle depth map overlay (needs `--depth` flag) |
+| `R` | Reset tracker — clear all track IDs back to #1 |
+| `E` | **Toggle REVERSE MODE** |
+
+### Reverse Mode (`E` key) — what it does
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    4 Camera Inputs                          │
-│         Front │ Left │ Right │ Rear  (threaded)             │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  raw BGR frames
-┌──────────────────────▼──────────────────────────────────────┐
-│                  PERCEPTION LAYER                           │
-│   YOLOv8 Detector │ Lane Detector │ MiDaS Depth Estimator  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  detections + lanes + depth
-┌──────────────────────▼──────────────────────────────────────┐
-│                   TRACKING LAYER                            │
-│         Kalman Filter + Hungarian Algorithm (SORT)          │
-│              Stable IDs · Velocity · Age                    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  tracks with IDs + velocity
-┌──────────────────────▼──────────────────────────────────────┐
-│                   DECISION LAYER                            │
-│   Collision Warning │ Blind Spot │ Parking │ Lane Change    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  alerts
-┌──────────────────────▼──────────────────────────────────────┐
-│                    OUTPUT LAYER                             │
-│       HUD Display │ Event Logger │ Annotated Video          │
-└─────────────────────────────────────────────────────────────┘
+FORWARD mode (default):
+  ✓ Front lane lines + filled polygon ON
+  ✓ Lane change detection ON
+  ✓ Lane departure warning ON
+  ✓ Collision warning (TTC) ON
+  ✗ Parking assist OFF
+
+Press E →
+
+REVERSE mode:
+  ✗ Front lane detection OFF  (you're reversing, no lane lines ahead)
+  ✗ Collision warning OFF
+  ✓ Parking proximity grid ON (bottom of screen, objects shown as dots)
+  ✓ REVERSE banner shown (red top bar)
+  ✓ Obstacle detection ON (using rear camera logic)
+
+Press E again → back to FORWARD
 ```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Setup
+
+```bash
+git clone https://github.com/yourusername/adas-system.git
+cd adas-system
+python -m venv adas_env
+
+# Windows CMD:
+adas_env\Scripts\activate.bat
+
+# Mac/Linux:
+source adas_env/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install timm flask
+```
+
+### 2a. Run live system (main.py)
+
+```bash
+python main.py                        # webcam 0
+python main.py --source 1             # second webcam
+python main.py --source road.mp4      # video file
+python main.py --width 320            # faster (CPU)
+python main.py --width 640            # more accurate
+python main.py --depth                # enable depth (GPU recommended)
+```
+
+### 2b. Run web test interface (web_app.py)
+
+```bash
+python web_app.py
+# Open browser: http://localhost:5000
+```
+
+Upload any image or video from any camera and get the full ADAS output in the browser.
+
+---
+
+## 🏛️ Architecture
+
+```
+web_app.py (Flask web layer — testing only)
+    │
+    │  calls
+    ▼
+main.py ◄── THE REAL PIPELINE
+  ├── process_single_frame()     ← core, used by both live + web
+  ├── process_video_file()       ← batch API for web_app.py
+  ├── process_image_file()       ← batch API for web_app.py
+  └── run()                      ← live OpenCV mode
+       │
+       ├── perception/
+       │     ├── yolov8_detector.py   ← YOLOv8, 80 COCO classes
+       │     ├── lane_detector.py     ← Canny + Hough lines
+       │     └── depth_estimator.py  ← MiDaS (optional)
+       │
+       ├── tracking/
+       │     └── tracker.py          ← Kalman + Hungarian
+       │
+       ├── decision/
+       │     ├── collision_warning.py ← TTC + distance
+       │     ├── blind_spot.py        ← side camera zones
+       │     └── parking_assist.py    ← reverse mode proximity
+       │
+       └── utils/
+             ├── data_models.py       ← FrameData, Track, Alert...
+             └── config_loader.py     ← YAML settings
+```
+
+**Key design:** `process_single_frame()` in `main.py` is shared by both live and web modes. This guarantees the web output is **identical** to what you see in the OpenCV window.
 
 ---
 
@@ -57,294 +205,141 @@ It processes video from up to **4 cameras** (front, left, right, rear) mounted o
 ```
 adas_system/
 │
-├── main.py                    ← Full pipeline with all features (START HERE)
-├── demo.py                    ← Single webcam quick demo
+├── main.py              ← Real ADAS pipeline (live camera + batch API)
+├── web_app.py           ← Web testing interface (calls main.py)
+├── demo.py              ← Quick single-webcam demo
 ├── requirements.txt
 │
 ├── config/
-│   └── settings.yaml          ← All thresholds, model paths, camera sources
-│                                 Edit this file to tune — no code changes needed
+│   └── settings.yaml    ← All thresholds — tune without touching code
 │
 ├── cameras/
-│   └── camera_manager.py      ← 4 threaded camera streams (producer-consumer)
+│   └── camera_manager.py
 │
-├── perception/                ← AI model wrappers
-│   ├── base_detector.py       ← Abstract class + DetectorFactory (swap models here)
-│   ├── yolov8_detector.py     ← YOLOv8 — full 80 COCO class support
-│   ├── lane_detector.py       ← Canny edges + Hough line transform
-│   └── depth_estimator.py     ← MiDaS monocular depth (auto-installs timm)
+├── perception/
+│   ├── base_detector.py      ← Abstract class + DetectorFactory
+│   ├── yolov8_detector.py    ← YOLOv8 (correct labels always)
+│   ├── lane_detector.py      ← Heuristic lane detection
+│   └── depth_estimator.py   ← MiDaS depth
 │
 ├── tracking/
-│   └── tracker.py             ← Kalman + Hungarian multi-object tracker
+│   └── tracker.py            ← Kalman + Hungarian SORT
 │
 ├── decision/
-│   ├── collision_warning.py   ← TTC + focal-length distance estimation
-│   ├── blind_spot.py          ← Side camera zone-based detection
-│   └── parking_assist.py      ← Rear camera proximity grid
+│   ├── collision_warning.py  ← TTC alerts
+│   ├── blind_spot.py         ← Side camera blind zone
+│   └── parking_assist.py     ← Reverse mode proximity
 │
 ├── output/
-│   ├── display.py             ← All OpenCV rendering (boxes, lanes, alerts)
-│   └── event_logger.py        ← JSONL event log + optional video recording
+│   ├── display.py            ← OpenCV rendering
+│   └── event_logger.py       ← JSONL event log
 │
 ├── utils/
-│   ├── data_models.py         ← All shared types (FrameData, Track, Alert...)
-│   └── config_loader.py       ← YAML loader with dot-notation access
+│   ├── data_models.py        ← All shared types
+│   └── config_loader.py      ← YAML loader
 │
 ├── tests/
-│   └── test_core.py           ← Unit tests (pytest)
+│   └── test_core.py          ← 48 unit tests (pytest)
 │
-├── DESIGN_MISTAKES.py         ← What NOT to do (read before extending)
-└── EXTENSIONS.py              ← How to add traffic signs, DMS, stereo depth, etc.
-```
-
----
-
-## 🚀 Quick Start
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/yourusername/adas-system.git
-cd adas-system
-```
-
-### 2. Create & activate virtual environment
-
-**Windows (CMD):**
-```cmd
-python -m venv adas_env
-adas_env\Scripts\activate.bat
-```
-
-**Windows (PowerShell):**
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-python -m venv adas_env
-adas_env\Scripts\Activate.ps1
-```
-
-**macOS / Linux:**
-```bash
-python -m venv adas_env
-source adas_env/bin/activate
-```
-
-### 3. Install dependencies
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install timm   # required by MiDaS
-```
-
-> **NVIDIA GPU users** — replace PyTorch with CUDA version for much faster inference:
-> ```bash
-> pip uninstall torch torchvision -y
-> pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-> ```
-
-### 4. Run
-
-```bash
-# Full pipeline — webcam 0 (recommended)
-python main.py
-
-# Quick single-camera demo
-python demo.py
-
-# Use a video file
-python main.py --source road_video.mp4
-
-# Faster inference (lower resolution)
-python main.py --width 320
-
-# Enable depth estimation (GPU recommended)
-python main.py --depth
-```
-
----
-
-## ⌨️ Keyboard Controls
-
-| Key | Action |
-|-----|--------|
-| `Q` / `ESC` | Quit |
-| `L` | Toggle lane detection overlay **ON / OFF** |
-| `D` | Toggle depth map overlay (only with `--depth`) |
-| `R` | Reset tracker — clear all track IDs |
-
----
-
-## 🎛️ Command Reference
-
-```bash
-# Basic run
-python main.py
-
-# Choose camera source
-python main.py --source 0          # webcam 0 (default)
-python main.py --source 1          # second webcam
-python main.py --source video.mp4  # video file
-
-# Inference width (lower = faster, higher = more accurate)
-python main.py --width 320         # ~25 FPS on CPU
-python main.py --width 416         # ~15 FPS on CPU (default)
-python main.py --width 640         # ~8  FPS on CPU
-
-# Enable MiDaS depth (GPU strongly recommended)
-python main.py --depth
-
-# Combine options
-python main.py --source road.mp4 --width 640 --depth
-
-# Run tests
-pytest tests/ -v
+├── ADAS_COMMANDS.md          ← Every command you need
+├── PROJECT_HANDOFF.md        ← Team context document
+├── DESIGN_MISTAKES.py        ← What NOT to do
+└── EXTENSIONS.py             ← How to add new features
 ```
 
 ---
 
 ## ⚡ Performance
 
-| Inference Width | CPU (no depth) | GPU (no depth) | GPU (with depth) |
-|---|---|---|---|
-| 320px | ~25 FPS | ~60 FPS | ~45 FPS |
-| 416px | ~15 FPS | ~45 FPS | ~35 FPS |
-| 640px | ~8 FPS  | ~30 FPS | ~22 FPS |
-
-> Tested on Windows 11, Python 3.11, Intel Core i7 (CPU) / NVIDIA RTX 3060 (GPU)
+| Inference Width | CPU (no depth) | GPU (no depth) |
+|---|---|---|
+| `--width 320` | ~25 FPS | ~60 FPS |
+| `--width 416` | ~15 FPS | ~45 FPS |
+| `--width 640` | ~8 FPS  | ~30 FPS |
 
 ---
 
-## 🧠 Models Used
+## ⚠️ Limitations
 
-| Model | Size | Task | Source |
-|---|---|---|---|
-| YOLOv8n | 6 MB | Object detection (80 classes) | [Ultralytics](https://ultralytics.com) |
-| YOLOv8s | 22 MB | Object detection (more accurate) | [Ultralytics](https://ultralytics.com) |
-| MiDaS small | ~80 MB | Monocular depth estimation | [isl-org/MiDaS](https://github.com/isl-org/MiDaS) |
+- Depth estimation is approximate (monocular / MiDaS)
+- Performance depends on hardware (CPU vs GPU)
+- Lane detection may fail in poor lighting or unclear roads
+- Not tested on real vehicle hardware yet
 
-All models **auto-download** on first run. No manual setup needed.
+---
+
+## 🧠 Pretrained Models
+
+| Model | Size | Auto-downloads |
+|---|---|---|
+| YOLOv8n | 6 MB | ✅ on first run |
+| YOLOv8s | 22 MB | ✅ on first run |
+| MiDaS small | ~80 MB | ✅ on first run (`--depth`) |
 
 ---
 
 ## 🔧 Configuration
 
-All settings live in `config/settings.yaml`. Edit this file to tune the system — no Python code changes required.
+All thresholds live in `config/settings.yaml` — no code changes needed to tune:
 
 ```yaml
-perception:
-  detector:
-    model_path: yolov8n.pt   # swap to yolov8s.pt for better accuracy
-    confidence: 0.40          # detection threshold (lower = more detections)
-
 decision:
   collision:
-    ttc_warning_sec:  3.0    # warn when TTC < 3 seconds
-    ttc_critical_sec: 1.5    # brake alert when TTC < 1.5 seconds
-
+    ttc_warning_sec:  3.0   # warn if TTC < 3s
+    ttc_critical_sec: 1.5   # brake alert if TTC < 1.5s
   blind_spot:
-    zone_x_ratio: 0.25       # blind zone = 25% of frame width from edge
+    zone_x_ratio: 0.25      # 25% of frame width = blind zone
+  parking:
+    critical_distance_cm: 40
+    warning_distance_cm:  100
 ```
 
 ---
 
-## 🔌 How to Swap the AI Model
+## ➕ Extending the System
 
-The system uses a **Registry + Factory** pattern. To replace YOLOv8 with any other detector:
+Read `EXTENSIONS.py` for step-by-step guides on adding:
 
-**Step 1** — Create `perception/my_detector.py`:
-```python
-from perception.base_detector import BaseDetector, DetectorFactory
-
-@DetectorFactory.register("mymodel")
-class MyDetector(BaseDetector):
-    def detect(self, frame, camera_id):
-        # your inference code here
-        return List[Detection]
-
-    def warmup(self): ...
-
-    @property
-    def name(self): return "MyModel"
-```
-
-**Step 2** — Update `config/settings.yaml`:
-```yaml
-perception:
-  detector:
-    backend: mymodel
-```
-
-**Step 3** — Done. Zero other files changed.
-
----
-
-## ➕ Adding New Features
-
-Read `EXTENSIONS.py` for detailed guides on adding:
-
-- 🚦 Traffic sign detection (YOLOv8 fine-tuned on GTSRB)
-- 👁️ Driver monitoring system (MediaPipe FaceMesh)
+- 🚦 Traffic sign detection
+- 👁️ Driver monitoring (drowsiness)
 - 📐 Stereo camera metric depth
-- 🌙 Night / rain mode (CLAHE + deraining)
-- 🏎️ Vehicle speed estimation from tracks
+- 🏎️ Vehicle speed estimation
+- 🌙 Night / rain mode
 
-**Golden rule:** Never modify existing files when adding features.
-Create new files → add 2-3 lines to `main.py`. That's it.
-
----
-
-## 🐛 Known Issues & Fixes
-
-| Error | Cause | Fix |
-|---|---|---|
-| `ModuleNotFoundError: timm` | MiDaS dependency missing | `pip install timm` |
-| `TypeError: 0-dimensional array` | filterpy Kalman state shape | Fixed in `tracker.py` — use latest |
-| `AttributeError: ANIMAL` | Stale ObjectClass reference | Fixed in `collision_warning.py` |
-| `MiDaS failed to load` | intel-isl repo renamed | Fixed — tries `isl-org` first |
-| Black screen / camera won't open | Wrong camera index | Run camera finder (see below) |
-
-**Camera finder:**
-```bash
-python -c "
-import cv2
-for i in range(5):
-    cap = cv2.VideoCapture(i)
-    if cap.read()[0]:
-        print(f'Camera {i} — works')
-    cap.release()
-"
-```
+**Rule:** Create a new file in `perception/` or `decision/`, add 2 lines to `main.py`. Never modify existing modules.
 
 ---
 
-## 🏗️ Design Principles
+## 🐛 Common Errors
 
-- **Modular** — each feature is a self-contained class, independently testable
-- **Config-driven** — every threshold lives in YAML, never hardcoded
-- **Loosely coupled** — modules communicate only via `FrameData` and `utils/data_models.py`
-- **Swappable** — any AI model can be replaced via `DetectorFactory` without touching the pipeline
-- **Scalable** — adding a 5th camera = one line in `settings.yaml`
-
----
-
-## 👥 Team
-
-| Role | Responsibility |
+| Error | Fix |
 |---|---|
-| Perception | `perception/` — model wrappers, lane detection, depth |
-| Decision | `decision/` — collision, blind spot, parking logic |
-| Features | New modules following `EXTENSIONS.py` guide |
-| Testing | `tests/` — pytest unit tests, video evaluation |
+| `ModuleNotFoundError: timm` | `pip install timm` |
+| `ModuleNotFoundError: flask` | `pip install flask` |
+| `'pytest' not recognized` | `pip install pytest` then `python -m pytest tests/ -v` |
+| Camera black screen | Run camera finder: `python -c "import cv2; [print(f'Cam {i} OK') for i in range(5) if cv2.VideoCapture(i).read()[0]]"` |
+| `AttributeError: ANIMAL` | Replace `decision/collision_warning.py` with latest version |
+| Video won't play in browser | Video is H.264 encoded — needs Chrome/Firefox/Edge |
 
 ---
 
+## 👥 Team Roles
 
+| Role | Files |
+|---|---|
+| Perception | `perception/` — models, lane, depth |
+| Decision logic | `decision/` — collision, blind spot, parking |
+| Features | New files following `EXTENSIONS.py` |
+| Testing | `tests/` — run `pytest tests/ -v` |
+
+---
 
 ## 🙏 Acknowledgements
 
-- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) — object detection
-- [Intel ISL MiDaS](https://github.com/isl-org/MiDaS) — monocular depth estimation
-- [OpenCV](https://opencv.org) — computer vision backbone
-- [filterpy](https://github.com/rlabbe/filterpy) — Kalman filter implementation
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
+- [Intel ISL MiDaS](https://github.com/isl-org/MiDaS)
+- [OpenCV](https://opencv.org)
+- [filterpy](https://github.com/rlabbe/filterpy)
 
 ---
 
