@@ -91,10 +91,10 @@ INFER_WIDTH      = 416
 DEPTH_EVERY_N    = 10
 LANE_EVERY_N     = 3
 DISPLAY_WIDTH    = 1024
-CAPTURE_QUEUE_SZ = 2
+CAPTURE_QUEUE_SZ = 8
 LANE_CHANGE_HISTORY  = 15
-LANE_CHANGE_THRESH   = 40
-LANE_CHANGE_COOLDOWN = 60
+LANE_CHANGE_THRESH   = 80
+LANE_CHANGE_COOLDOWN = 90
 
 # ── Color palette BGR ─────────────────────────────────────────────────────────
 _C = {
@@ -132,17 +132,25 @@ class LaneChangeDetector:
 
     def update(self, lanes) -> dict:
         result = {"changing": False, "direction": "", "alert_text": ""}
+
+        # no polygon — don't clear history, just skip this frame
         if lanes is None or (lanes.left_line is None and lanes.right_line is None):
-            self._history.clear()
-            self.active = False
             self._cooldown = max(0, self._cooldown - 1)
+            if self.active_frames > 0:
+                self.active_frames -= 1
+                result.update({"changing": True, "direction": self.direction,
+                               "alert_text": f"LANE CHANGE  {self.direction.upper()}"})
+            else:
+                self.active = False
+                self.direction = ""
             return result
 
         self._history.append(lanes.center_offset_px)
         if self._cooldown > 0:
             self._cooldown -= 1
 
-        if len(self._history) < LANE_CHANGE_HISTORY // 2:
+        # need full history before firing — prevents false trigger at video start
+        if len(self._history) < LANE_CHANGE_HISTORY:
             return result
 
         half    = len(self._history) // 2
@@ -151,7 +159,7 @@ class LaneChangeDetector:
         shift   = new_avg - old_avg
 
         if abs(shift) > LANE_CHANGE_THRESH and self._cooldown == 0:
-            direction = "right" if shift > 0 else "left"
+            direction = "left" if shift > 0 else "right"
             self.active        = True
             self.direction     = direction
             self.active_frames = LANE_CHANGE_COOLDOWN // 2
@@ -746,9 +754,28 @@ def run(source=0, enable_depth=False, infer_width=INFER_WIDTH):
     if not cap.isOpened():
         logger.error(f"Cannot open source: {source}"); return
 
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE,1)
+    if not isinstance(source, str):   # live camera only
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+    # ── OUTPUT VIDEO WRITER ──────────────────────────────────────────────────
+    out_writer = None
+    if isinstance(source, str):  # only for video files, not live camera
+        input_fps  = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        input_w    = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        input_h    = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        out_dir    = Path("demo_video_output")
+        out_dir.mkdir(exist_ok=True)
+        out_name   = out_dir / f"output_{Path(source).stem}.mp4"
+        out_writer = cv2.VideoWriter(
+            str(out_name),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            input_fps,
+            (input_w, input_h)
+        )
+        logger.info(f"  Saving output to: {out_name}")
+    # ────────────────────────────────────────────────────────────────────────
 
     frame_queue = Queue(maxsize=CAPTURE_QUEUE_SZ)
     stop_event  = threading.Event()
@@ -757,10 +784,13 @@ def run(source=0, enable_depth=False, infer_width=INFER_WIDTH):
         while not stop_event.is_set():
             ret, frame = cap.read()
             if not ret: stop_event.set(); break
-            if frame_queue.full():
-                try: frame_queue.get_nowait()
-                except Empty: pass
-            frame_queue.put(frame)
+            if isinstance(source, str):  # video file — never drop frames
+                frame_queue.put(frame)
+            else:                        # live camera — drop stale frames
+                if frame_queue.full():
+                    try: frame_queue.get_nowait()
+                    except Empty: pass
+                frame_queue.put(frame)
 
     threading.Thread(target=_capture, daemon=True, name="cam").start()
 
@@ -809,6 +839,11 @@ def run(source=0, enable_depth=False, infer_width=INFER_WIDTH):
 
         cv2.imshow("ADAS — Main Pipeline", out)
 
+        # write annotated frame to output video (same size as input)
+        if out_writer is not None:
+            write_frame = cv2.resize(out, (input_w, input_h)) if out.shape[1] != input_w else out
+            out_writer.write(write_frame)
+
         if frame_idx % 60 == 0:
             ms = (time.monotonic()-t0)*1000
             mode = "REVERSE" if reverse_mode else "FORWARD"
@@ -851,6 +886,9 @@ def run(source=0, enable_depth=False, infer_width=INFER_WIDTH):
 
     stop_event.set()
     cap.release()
+    if out_writer is not None:
+        out_writer.release()
+        logger.info(f"Output video saved to: {out_name}")
     cv2.destroyAllWindows()
     logger.info("ADAS stopped cleanly")
 
@@ -870,6 +908,19 @@ if __name__ == "__main__":
                     help=f"YOLO inference width px (default {INFER_WIDTH})\n"
                          "  320 = fastest  |  416 = balanced  |  640 = accurate")
     args = ap.parse_args()
+
+    # ── SOURCE PROMPT (if --source not provided) ─────────────────────────────
+    if args.source == 0:
+        print("\n  ADAS — Choose input source")
+        print("  [1] Live camera")
+        print("  [2] Upload a video file")
+        choice = input("  Enter 1 or 2: ").strip()
+        if choice == "2":
+            video_path = input("  Enter full path to video file: ").strip().strip("'\"")
+            args.source = video_path
+        else:
+            args.source = 0
+    # ─────────────────────────────────────────────────────────────────────────
 
     src = args.source
     try: src = int(src)

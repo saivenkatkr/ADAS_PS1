@@ -55,7 +55,7 @@ class LaneDetector:
         blurred = cv2.GaussianBlur(gray, (9, 9), 0)
         edges   = cv2.Canny(blurred, 50, 150)
 
-        # 2. Region of Interest (trapezoid mask)
+        # 2. Tighter ROI — only look at center portion of frame
         mask = np.zeros_like(edges)
         roi_pts = np.array([[
             (int(w * 0.0), h),
@@ -80,20 +80,20 @@ class LaneDetector:
             for line in lines:
                 x1, y1, x2, y2 = line[0]
                 if x1 == x2:
-                    continue  # vertical — skip
+                    continue
                 slope = (y2 - y1) / (x2 - x1)
-                if slope < -0.5:         # negative slope = left lane
+                # tighter slope range — filters out near-horizontal and near-vertical noise
+                if -1.3 < slope < -0.8:
                     left_lines.append(line[0])
-                elif slope > 0.5:        # positive slope = right lane
+                elif 0.4 < slope < 0.7:
                     right_lines.append(line[0])
 
         left_line  = self._average_lines(left_lines,  h, roi_y)
         right_line = self._average_lines(right_lines, h, roi_y)
 
-        # 4. Center offset
         center_offset = self._compute_center_offset(left_line, right_line, w)
 
-        departure = abs(center_offset) > w * 0.08   # >8% of width = warning
+        departure = abs(center_offset) > w * 0.12   # 15% threshold — less sensitive
 
         return LaneInfo(
             left_line=left_line,
