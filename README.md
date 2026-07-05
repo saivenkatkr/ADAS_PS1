@@ -3,9 +3,11 @@
 # 🚗 ADAS — Advanced Driver Assistance System
 
 ## 🆕 Version: v2
-### 🎥 Demo
 
-demo_video_output/test1.mp4
+
+https://github.com/user-attachments/assets/e57f0c39-cf31-4c48-9bf5-0dda61ef02e1
+
+
 
 ### 🚧 Project Status
 - ✅ `main.py` → Fully functional ADAS pipeline (core system)
